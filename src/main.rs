@@ -33,7 +33,7 @@ impl MyEguiApp {
 }
 
 static mut INDEX: usize = 0;
-const WINDOW_SIZE: usize = 4096;
+const WINDOW_SIZE: usize = 256;
 
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -63,6 +63,10 @@ impl eframe::App for MyEguiApp {
                         .color(egui::Color32::GOLD)
                         .name("FFT");
 
+                    let plot_points = buffer.iter().take(WINDOW_SIZE / 2)
+                        .map(|c| [c.re as f64, c.im as f64])
+                        .collect::<egui_plot::PlotPoints>();
+
                     egui_plot::Plot::new("FFT")
                         .legend(egui_plot::Legend::default())
                         .clamp_grid(true)
@@ -71,7 +75,12 @@ impl eframe::App for MyEguiApp {
                         .allow_drag([true, true])
                         .allow_scroll(true)
                         .show_grid([false, false])
-                        .show(ui, |plot_ui| plot_ui.bar_chart(chart))
+                        // .view_aspect(1.0)
+                        .show(ui, |plot_ui| {
+                            // plot_ui.bar_chart(chart);
+                            // plot_ui.line(egui_plot::Line::new(plot_points))
+                            plot_ui.points(egui_plot::Points::new(plot_points).radius(2.0))
+                        })
                         .response
                 },
             );
@@ -83,6 +92,7 @@ impl eframe::App for MyEguiApp {
 
 fn main() {
     let file = BufReader::new(File::open("examples/musics/Data_No_1.wav").unwrap());
+    // let file = BufReader::new(File::open("/Users/w-mai/Music/Lx Music/Peace and Magic (album version)(Album Version) - LUCKY TAPES.mp3").unwrap());
     let source = Decoder::new(file).unwrap();
 
     let source = Box::new(source.convert_samples::<f32>()).map(|s| Complex::new(s, 0.0)).collect::<Vec<Complex<f32>>>();
