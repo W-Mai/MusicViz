@@ -33,7 +33,14 @@ impl MyEguiApp {
 }
 
 static mut INDEX: usize = 0;
-const WINDOW_SIZE: usize = 256;
+const WINDOW_SIZE: usize = 1024 * 1;
+
+fn fftshift<T: Copy>(output: &mut [Complex<T>], n: usize) {
+    let half = n / 2;
+    for i in 0..half {
+        output.swap(i, n - i - 1);
+    }
+}
 
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -47,6 +54,7 @@ impl eframe::App for MyEguiApp {
         let mut buffer = source;
 
         fft.process(&mut buffer);
+        fftshift(&mut buffer, WINDOW_SIZE / 2);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::widgets::global_dark_light_mode_switch(ui);
@@ -56,14 +64,16 @@ impl eframe::App for MyEguiApp {
                 egui::Layout::centered_and_justified(egui::Direction::TopDown),
                 |ui| {
                     let chart = egui_plot::BarChart::new(
-                        buffer.iter().take(WINDOW_SIZE / 2)
-                            .map(|c| egui_plot::Bar::new(c.im as f64, c.re as f64).width(0.001))
+                        buffer.iter()
+                            // .skip(WINDOW_SIZE / 2)
+                            .enumerate()
+                            .map(|(freq, c)| egui_plot::Bar::new((freq as f64 / WINDOW_SIZE as f64 * 2.0 * 20000.0) as f64, c.norm() as f64).width(0.001))
                             .collect(),
                     )
                         .color(egui::Color32::GOLD)
                         .name("FFT");
 
-                    let plot_points = buffer.iter().take(WINDOW_SIZE / 2)
+                    let plot_points = buffer.iter().skip(WINDOW_SIZE / 2)
                         .map(|c| [c.re as f64, c.im as f64])
                         .collect::<egui_plot::PlotPoints>();
 
@@ -77,9 +87,9 @@ impl eframe::App for MyEguiApp {
                         .show_grid([false, false])
                         // .view_aspect(1.0)
                         .show(ui, |plot_ui| {
-                            // plot_ui.bar_chart(chart);
+                            plot_ui.bar_chart(chart);
                             // plot_ui.line(egui_plot::Line::new(plot_points))
-                            plot_ui.points(egui_plot::Points::new(plot_points).radius(2.0))
+                            // plot_ui.points(egui_plot::Points::new(plot_points).radius(2.0))
                         })
                         .response
                 },
@@ -91,8 +101,8 @@ impl eframe::App for MyEguiApp {
 }
 
 fn main() {
-    let file = BufReader::new(File::open("examples/musics/Data_No_1.wav").unwrap());
-    // let file = BufReader::new(File::open("/Users/w-mai/Music/Lx Music/Peace and Magic (album version)(Album Version) - LUCKY TAPES.mp3").unwrap());
+    // let file = BufReader::new(File::open("examples/musics/Data_No_1.wav").unwrap());
+    let file = BufReader::new(File::open("/Users/w-mai/Downloads/Data_No_1.wav").unwrap());
     let source = Decoder::new(file).unwrap();
 
     let source = Box::new(source.convert_samples::<f32>()).map(|s| Complex::new(s, 0.0)).collect::<Vec<Complex<f32>>>();
